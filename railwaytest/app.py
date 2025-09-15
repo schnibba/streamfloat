@@ -6,10 +6,10 @@ app = FastAPI()
 
 @app.post("/scrape/spotify")
 async def scrape_spotify():
-    await spotify_scraper.main()
+    await spotify_7Dstreams.main()
     return {"status": "ok"}
 
 @app.post("/scrape/soundcloud")
 async def scrape_soundcloud():
-    await soundcloud_scraper.main()
+    await soundcloud_7Dstreams.main()
     return {"status": "ok"}
