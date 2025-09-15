@@ -6,6 +6,7 @@ import re
 import datetime
 from bs4 import BeautifulSoup
 
+# 📂 Speicherort für JSON
 OUTPUT_DIR = "/Users/schnibba/spotify-dashboard/json_files/spotify/Gesamtstreams"
 artist_id = "3OOeP2opYuTEm0QIU4gQ6M"
 
@@ -26,15 +27,13 @@ URLS = {
     "12 Monate Streams": f"https://artists.spotify.com/c/artist/{artist_id}/audience/stats?fromDate={from_date_12}&toDate={to_date_12}&metric=streams&country=&comparisonId="
 }
 
+CHROME_PATH = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+
 async def get_driver():
-    ws_endpoint = os.getenv("BROWSERLESS_WS_URL")
-    if not ws_endpoint:
-        raise RuntimeError("BROWSERLESS_WS_URL environment variable is not set!")
     driver = await uc.start(
-        remote=True,
-        ws_endpoint=ws_endpoint,
-        headless=True,
-        no_sandbox=True
+        headless=False,  # falls du das Browser-Fenster sehen willst
+        no_sandbox=True,
+        browser_executable_path=CHROME_PATH
     )
     return driver
 
@@ -49,10 +48,8 @@ async def scrape_data(driver, url, timeframe):
     if stats_button:
         stats_text = stats_button.find("p", {"data-encore-id": "text"})
         if stats_text:
-            try:
-                total_value = int(stats_text.text.replace(",", ""))
-            except Exception:
-                total_value = None
+            total_value = int(stats_text.text.replace(",", ""))
+            print(f"🎧 Gesamtzahl für {timeframe}: {total_value}")
     daily_data = {}
     rect_elements = soup.find_all("rect", {"aria-label": True})
     for rect in rect_elements:
@@ -62,17 +59,16 @@ async def scrape_data(driver, url, timeframe):
             date = match.group(1)
             count = int(match.group(2).replace(",", ""))
             daily_data[date] = count
-    print(f"  → Gesamt: {total_value}, Tage: {len(daily_data)}")
+    print(f"📅 Tägliche Daten ({timeframe}): {daily_data}")
     return {"timeframe": timeframe, "total": total_value, "daily": daily_data}
 
 async def scrape_spotify_data():
-    print("🚀 Starte nodriver für Spotify Scraping (Browserless-Modus)...")
+    print("🚀 Starte nodriver für Spotify Scraping lokal mit lokalem Chrome...")
     driver = None
     try:
-        driver = await get_driver()  # HIER wird der Browserless-Driver verwendet!
-        # Login
+        driver = await get_driver()
         first_url = next(iter(URLS.values()))
-        print("\n🛑 Bitte logge dich manuell ein. Nach dem Login drücke Enter im Terminal.")
+        print("\n🛑 Bitte logge dich manuell im geöffneten Chrome ein. Nach dem Login 30 Sekunden warten...")
         await driver.get(first_url)
         await asyncio.sleep(30)
         scraped_results = {}
