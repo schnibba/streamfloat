@@ -33,7 +33,7 @@ URLS = {
 
 # DRIVER: Initialisiere eine Nodriver-Session über Browserless
 async def get_driver():
-    ws_endpoint = os.getenv("wss://${{BROWSER_DOMAIN}}?token=${{BROWSER_TOKEN}}")
+    ws_endpoint = os.getenv("BROWSERLESS_WS_URL")
     if not ws_endpoint:
         raise RuntimeError("BROWSERLESS_WS_URL environment variable is not set!")
     driver = await uc.start(
