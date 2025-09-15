@@ -127,20 +127,15 @@ async def extract_streams(driver, url):
     return output_data
 
 async def get_driver():
-    async def get_driver():
     ws_endpoint = os.getenv("BROWSERLESS_WS_URL")
-    if not ws_endpoint:
-        raise RuntimeError("BROWSERLESS_WS_URL environment variable is not set")
     driver = await uc.start(
         remote=True,
         ws_endpoint=ws_endpoint,
         headless=True,
         no_sandbox=True
     )
-    # Im Remote-Fall sind Cookies meist eh im Remote-Browser gespeichert,
-    # du kannst COOKIE-Handling hier notfalls weglassen. Optional:
-    # Wenn eine Session-Datei pflegen möchtest, kann dies wie bisher erfolgen.
     return driver
+
 
 async def main():
     now = datetime.now()
