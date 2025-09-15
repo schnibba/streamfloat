@@ -127,15 +127,19 @@ async def extract_streams(driver, url):
     return output_data
 
 async def get_driver():
-    driver = await uc.start(no_sandbox=True)
-    if os.path.exists(".session.dat"):
-        await driver.cookies.load()
-    else:
-        signin_page = await driver.get("https://soundcloud.com/signin")
-        await signin_page.reload()
-        await asyncio.sleep(5)
-        await asyncio.to_thread(input, "Drücke Enter, wenn du eingeloggt bist...")
-        await driver.cookies.save()
+    async def get_driver():
+    ws_endpoint = os.getenv("BROWSERLESS_WS_URL")
+    if not ws_endpoint:
+        raise RuntimeError("BROWSERLESS_WS_URL environment variable is not set")
+    driver = await uc.start(
+        remote=True,
+        ws_endpoint=ws_endpoint,
+        headless=True,
+        no_sandbox=True
+    )
+    # Im Remote-Fall sind Cookies meist eh im Remote-Browser gespeichert,
+    # du kannst COOKIE-Handling hier notfalls weglassen. Optional:
+    # Wenn eine Session-Datei pflegen möchtest, kann dies wie bisher erfolgen.
     return driver
 
 async def main():
