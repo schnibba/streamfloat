@@ -6,4 +6,4 @@ supabase
 asyncio
 fastapi
 uvicorn
-
+nodriver
