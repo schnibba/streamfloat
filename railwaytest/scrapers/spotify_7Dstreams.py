@@ -33,7 +33,7 @@ async def get_driver():
     driver = await uc.start(
         headless=False,  # falls du das Browser-Fenster sehen willst
         no_sandbox=True,
-        browser_executable_path='/Applications/Google Chrome.app'
+        browser_executable_path='/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
     )
     return driver
 
