@@ -4,3 +4,5 @@ playwright
 requests
 supabase
 asyncio
+fastapi
+uvicorn
