@@ -51,7 +51,6 @@ def get_chart_bottom(soup):
     x_axis = soup.find("g", class_=lambda c: c and "MuiChartsAxis-directionX" in c)
     if x_axis and x_axis.has_attr("transform"):
         transform_val = x_axis["transform"]
-        import re
         m = re.search(r"translate\([^,]+,\s*([^)]+)\)", transform_val)
         if m:
             try:
@@ -80,6 +79,18 @@ async def scroll_page(page):
         if new_height == previous_height:
             break
         previous_height = new_height
+
+async def get_driver():
+    ws_endpoint = os.getenv("BROWSERLESS_WS_URL")
+    if not ws_endpoint:
+        raise RuntimeError("BROWSERLESS_WS_URL environment variable is not set!")
+    driver = await uc.start(
+        remote=True,
+        ws_endpoint=ws_endpoint,
+        headless=True,
+        no_sandbox=True
+    )
+    return driver
 
 async def extract_streams(driver, url):
     page = await driver.get(url)
@@ -126,27 +137,38 @@ async def extract_streams(driver, url):
     }
     return output_data
 
-async def get_driver():
-    ws_endpoint = os.getenv("BROWSERLESS_WS_URL")
-    driver = await uc.start(
-        remote=True,
-        ws_endpoint=ws_endpoint,
-        headless=True,
-        no_sandbox=True
-    )
-    return driver
-
+async def extract_tooltip_data(driver, url):
+    page = await driver.get(url)
+    await asyncio.sleep(10)
+    bars = await page.query_selector_all("g[clip-path] rect.MuiBarElement-root")
+    tooltip_data = {}
+    for i, bar in enumerate(bars):
+        await bar.mouse_move()
+        await asyncio.sleep(2)
+        try:
+            tooltip_span = await page.query_selector('div[role="tooltip"] span.mui-141fd84')
+            plays_text = tooltip_span.text if tooltip_span else None
+            month_div = await page.query_selector('div[role="tooltip"] div.mui-8euwhr > div:first-child')
+            month_text = month_div.text if month_div else None
+            tooltip_data[f"Bar_{i+1}"] = {
+                "plays": plays_text,
+                "month": month_text
+            }
+        except Exception:
+            tooltip_data[f"Bar_{i+1}"] = {
+                "plays": None,
+                "month": None
+            }
+    return tooltip_data
 
 async def main():
     now = datetime.now()
     streams7_to = int(now.timestamp()) * 1000
     streams7_from = int((now - timedelta(days=7)).timestamp()) * 1000
     streams7_url = f"https://insights-ui.soundcloud.com/?timewindow=DAYS_7&from={streams7_from}&to={streams7_to}&resolution=DAY"
-
     streams30_to = int(now.timestamp()) * 1000
     streams30_from = int((now - timedelta(days=30)).timestamp()) * 1000
     streams30_url = f"https://insights-ui.soundcloud.com/?timewindow=DAYS_30&from={streams30_from}&to={streams30_to}&resolution=DAY"
-
     tooltip_to = int(now.timestamp()) * 1000
     tooltip_from = int((now - timedelta(days=365)).timestamp()) * 1000
     tooltip_url = f"https://insights-ui.soundcloud.com/?timewindow=MONTHS_12&from={tooltip_from}&to={tooltip_to}&resolution=MONTH"
@@ -157,7 +179,9 @@ async def main():
     streams30_task = asyncio.create_task(extract_streams(driver_streams30, streams30_url))
     tooltip_task = asyncio.create_task(extract_tooltip_data(driver_tooltip, tooltip_url))
 
-    streams7_result, streams30_result, tooltip_result = await asyncio.gather(streams7_task, streams30_task, tooltip_task)
+    streams7_result, streams30_result, tooltip_result = await asyncio.gather(
+        streams7_task, streams30_task, tooltip_task
+    )
 
     combined_results = {
         "timestamp": datetime.now().isoformat(),
@@ -168,7 +192,6 @@ async def main():
             "source": tooltip_url
         }
     }
-
     json_dir = "/Users/schnibba/spotify-dashboard/json_files/soundcloud/Gesamtstreams"
     os.makedirs(json_dir, exist_ok=True)
     timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -176,11 +199,14 @@ async def main():
 
     with open(combined_json_path, "w") as f:
         json.dump(combined_results, f, indent=2)
-
     print(f"Ergebnisse wurden in {combined_json_path} gespeichert.")
 
     try:
-        await asyncio.gather(driver_streams7.close(), driver_streams30.close(), driver_tooltip.close())
+        await asyncio.gather(
+            driver_streams7.close(),
+            driver_streams30.close(),
+            driver_tooltip.close()
+        )
     except Exception:
         pass
 
