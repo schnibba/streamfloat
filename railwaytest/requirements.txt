@@ -1,8 +1,0 @@
-beautifulsoup4
-undetected-chromedriver
-playwright
-requests
-supabase
-asyncio
-fastapi
-uvicorn
