@@ -9,7 +9,6 @@ from bs4 import BeautifulSoup
 OUTPUT_DIR = "/Users/schnibba/spotify-dashboard/json_files/spotify/Gesamtstreams"
 artist_id = "3OOeP2opYuTEm0QIU4gQ6M"
 
-# Berechnung der Datumswerte mit gestern als Enddatum
 today = datetime.date.today()
 yesterday = today - datetime.timedelta(days=1)
 date_format = "%Y-%m-%d"
@@ -25,6 +24,18 @@ URLS = {
     "28 Tage Streams": f"https://artists.spotify.com/c/artist/{artist_id}/audience/stats?fromDate={from_date_28}&toDate={to_date_28}&metric=streams&country=&comparisonId=",
     "12 Monate Streams": f"https://artists.spotify.com/c/artist/{artist_id}/audience/stats?fromDate={from_date_12}&toDate={to_date_12}&metric=streams&country=&comparisonId="
 }
+
+async def get_driver():
+    ws_endpoint = os.getenv("BROWSERLESS_WS_URL")
+    if not ws_endpoint:
+        raise RuntimeError("BROWSERLESS_WS_URL environment variable is not set!")
+    driver = await uc.start(
+        remote=True,
+        ws_endpoint=ws_endpoint,
+        headless=True,
+        no_sandbox=True
+    )
+    return driver
 
 async def scrape_data(driver, url, timeframe):
     print(f"\n📊 Scrape {timeframe}: {url}")
@@ -54,32 +65,27 @@ async def scrape_data(driver, url, timeframe):
 
     return {"timeframe": timeframe, "total": total_value, "daily": daily_data}
 
-async def main():
-    print("🚀 Starte nodriver für Spotify Scraping...")
+async def scrape_spotify_data():
+    print("🚀 Starte nodriver für Spotify Scraping (Browserless-Modus)...")
     driver = None
     try:
-        driver = await uc.start(no_sandbox=True)
+        driver = await get_driver()  # <- Browserless Connection
         first_url = next(iter(URLS.values()))
         print("\n🛑 Bitte logge dich manuell ein. Nach dem Login drücke Enter im Terminal.")
         await driver.get(first_url)
         await asyncio.sleep(30)
-
         scraped_results = {}
         for timeframe, url in URLS.items():
             result = await scrape_data(driver, url, timeframe)
             scraped_results[timeframe] = result
-
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         output_file = os.path.join(OUTPUT_DIR, f"spotify_streams_{timestamp}.json")
         os.makedirs(OUTPUT_DIR, exist_ok=True)
-
         with open(output_file, "w", encoding="utf-8") as f:
             json.dump(scraped_results, f, ensure_ascii=False, indent=4)
         print(f"\n✅ Daten wurden gespeichert: {output_file}")
-
     except Exception as e:
         print(f"\n❌ Fehler während des Scraping-Prozesses: {e}")
-
     finally:
         if driver:
             try:
@@ -88,4 +94,4 @@ async def main():
                 print(f"\n⚠️ Fehler beim Schließen des Browsers: {e}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(scrape_spotify_data())
