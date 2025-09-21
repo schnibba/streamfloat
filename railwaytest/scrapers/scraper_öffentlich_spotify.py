@@ -5,13 +5,11 @@ import re
 import json
 import datetime
 
-artist_id = "3OOeP2opYuTEm0QIU4gQ6M"
-URL = f"https://open.spotify.com/artist/{artist_id}"
+# Entferne globale artist_id-Variable
+# artist_id = "3OOeP2opYuTEm0QIU4gQ6M"
 
 async def close_popups(page):
     print("[INFO] Prüfe auf Pop-ups...")
-
-    # Cookie Consent akzeptieren
     try:
         consent_button = await page.query_selector('button[data-testid="cookie-policy-accept"]')
         if consent_button:
@@ -21,7 +19,6 @@ async def close_popups(page):
     except Exception as e:
         print(f"[WARN] Cookie Consent Fehler: {e}")
 
-    # "Öffnen in App" Pop-up schließen
     try:
         app_popup_close_button = await page.query_selector('button[aria-label="Close"]')
         if app_popup_close_button:
@@ -41,10 +38,12 @@ async def click_show_more(page):
     except Exception:
         print("[INFO] Kein 'Mehr anzeigen' Button gefunden oder Fehler beim Klicken")
 
-async def scrape_spotify_artist_tracks():
+async def scrape_spotify_artist_tracks(artist_id: str):
+    URL = f"https://open.spotify.com/artist/{artist_id}"
     print(f"[INFO] Starte Scraping für Spotify Artist: {artist_id}")
+
     async with async_playwright() as p:
-        browser = await p.chromium.launch(headless=False)
+        browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
         await page.goto(URL)
 
@@ -55,7 +54,6 @@ async def scrape_spotify_artist_tracks():
 
         await click_show_more(page)
 
-        # Noch einmal Pop-ups schließen falls beim Nachladen neue auftauchen
         await close_popups(page)
 
         content = await page.content()
@@ -97,7 +95,6 @@ async def scrape_spotify_artist_tracks():
                 tracks.append({"track_name": track_name, "play_count": play_count})
         else:
             print("[WARN] Unterschiedliche Anzahl Track-Namen und Playzahlen!")
-            # Fallback: Nur Tracknamen ohne Plays hinzufügen
             for name_el in track_names:
                 tracks.append({"track_name": name_el.text.strip(), "play_count": None})
 
@@ -110,6 +107,7 @@ async def scrape_spotify_artist_tracks():
 
         return {"artist_id": artist_id, "scrape_time": timestamp, "data": data}
 
-if __name__ == "__main__":
-    scraped_data = asyncio.run(scrape_spotify_artist_tracks())
-    print(json.dumps(scraped_data, indent=4, ensure_ascii=False))
+# Wenn du möchtest, kannst du den Scraper lokal testen mit:
+# if __name__ == "__main__":
+#     result = asyncio.run(scrape_spotify_artist_tracks("3OOeP2opYuTEm0QIU4gQ6M"))
+#     print(json.dumps(result, indent=4, ensure_ascii=False))
