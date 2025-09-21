@@ -1,15 +1,10 @@
 from fastapi import FastAPI
-from scrapers import soundcloud_7Dstreams, spotify_7Dstreams
+from scrapers import scraper_öffentlich_spotify
 import asyncio
 
 app = FastAPI()
 
 @app.post("/scrape/spotify")
 async def scrape_spotify():
-    await spotify_7Dstreams.main()
-    return {"status": "ok"}
-
-@app.post("/scrape/soundcloud")
-async def scrape_soundcloud():
-    await soundcloud_7Dstreams.main()
+    await scraper_öffentlich_spotify.main()
     return {"status": "ok"}
